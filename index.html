@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Samsung Foundry Pac-Man</title>
+    <style>
+        body {
+            background-color: #111;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            border: 4px solid #222;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #ui {
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+        .victory-msg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border: 5px solid #0072C3;
+            border-radius: 20px;
+            display: none;
+            z-index: 10;
+        }
+        .victory-msg h1 {
+            font-size: 48px;
+            color: #0072C3; /* Samsung Blue */
+            text-shadow: 2px 2px #fff;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div id="victoryScreen" class="victory-msg">
+        <h1>Samsung Foundry<br>will be the Top</h1>
+        <p style="color: white; margin-top: 20px;">Mission Accomplished!</p>
+        <button onclick="location.reload()" style="padding: 10px 20px; cursor: pointer;">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const victoryScreen = document.getElementById('victoryScreen');
+
+        const tileSize = 40;
+        const rows = 10;
+        const cols = 10;
+        let score = 0;
+        let gameRunning = true;
+
+        // 1: 벽, 0: 점수(먹이), 2: 빈공간
+        let map = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,1,0,0,0,0,1],
+            [1,0,1,0,1,0,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,1,0,1],
+            [1,0,1,1,1,1,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1],
+            [1,0,0,0,1,1,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        let pacman = {
+            x: 1,
+            y: 1,
+            dir: 'right',
+            nextDir: 'right'
+        };
+
+        // 전체 먹이 개수 계산
+        let totalDots = map.flat().filter(cell => cell === 0).length;
+
+        function drawMap() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (map[r][c] === 1) {
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
+                    } else if (map[r][c] === 0) {
+                        ctx.fillStyle = '#f1c40f';
+                        ctx.beginPath();
+                        ctx.arc(c * tileSize + tileSize/2, r * tileSize + tileSize/2, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawPacman() {
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            let centerX = pacman.x * tileSize + tileSize/2;
+            let centerY = pacman.y * tileSize + tileSize/2;
+            
+            // 방향에 따른 입 모양 각도
+            let startAngle = 0.2 * Math.PI;
+            let endAngle = 1.8 * Math.PI;
+            if(pacman.dir === 'left') { startAngle = 1.2 * Math.PI; endAngle = 0.8 * Math.PI; }
+            if(pacman.dir === 'up') { startAngle = 1.7 * Math.PI; endAngle = 1.3 * Math.PI; }
+            if(pacman.dir === 'down') { startAngle = 0.7 * Math.PI; endAngle = 0.3 * Math.PI; }
+
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, tileSize/2 - 5, startAngle, endAngle);
+            ctx.lineTo(centerX, centerY);
+            ctx.fill();
+        }
+
+        function movePacman() {
+            let nextX = pacman.x;
+            let nextY = pacman.y;
+
+            if (pacman.dir === 'left') nextX--;
+            if (pacman.dir === 'right') nextX++;
+            if (pacman.dir === 'up') nextY--;
+            if (pacman.dir === 'down') nextY++;
+
+            if (map[nextY][nextX] !== 1) {
+                pacman.x = nextX;
+                pacman.y = nextY;
+                
+                if (map[pacman.y][pacman.x] === 0) {
+                    map[pacman.y][pacman.x] = 2;
+                    score++;
+                    scoreElement.innerText = score;
+                    if (score === totalDots) {
+                        gameRunning = false;
+                        victoryScreen.style.display = 'block';
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') pacman.dir = 'left';
+            if (e.key === 'ArrowRight') pacman.dir = 'right';
+            if (e.key === 'ArrowUp') pacman.dir = 'up';
+            if (e.key === 'ArrowDown') pacman.dir = 'down';
+        });
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            movePacman();
+            drawPacman();
+            setTimeout(gameLoop, 200); // 0.2초마다 갱신
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
